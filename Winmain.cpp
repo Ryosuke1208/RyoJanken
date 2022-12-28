@@ -1,5 +1,5 @@
-//Dxlibは図形や文字の始点が中央に指定できないからマジックナンバーが多く出てしまう・・・
 #include "DxLib.h"
+/*******************************************************/
 //WINDOW設定
 #define WINDOW_W 800
 #define WINDOW_H 450
@@ -9,13 +9,8 @@
 #define IMG_NUM 3
 //SEの数
 #define SE_NUM 6
+/*******************************************************/
 
-//Font用の変数　いろんなとこで使うんでグローバルにしてる
-int g_fontHandle1;
-int g_fontHandle2;
-//キーの押下状態の保存用配列　いろんなとこで使うんでグローバルにしてる
-char g_keyState[256];
-char g_oldKeyState[256];
 //プレイヤーとＰＣの出す手の情報
 struct HAND {
 	int hand;
@@ -46,6 +41,12 @@ struct DATA {
 	int se_flg = 0;
 
 	int j_flg = 0;
+	
+	int fontHandle1 = 0;
+	int fontHandle2 = 0;
+
+	char keyState[256] = { 0 };
+	char oldKeyState[256] = { 0 };
 };
 
 //画像読み込み処理
@@ -88,20 +89,52 @@ void init(struct DATA* d){
 	d->resultSize = 0;
 	d->state = d->TITLE;
 
-	g_fontHandle1 = CreateFontToHandle(NULL, 40, -1);
-	g_fontHandle2 = CreateFontToHandle(NULL, 100, -1);
+	d->fontHandle1 = CreateFontToHandle(NULL, 40, -1);
+	d->fontHandle2 = CreateFontToHandle(NULL, 100, -1);
+}
+//描画処理用
+void draw(struct DATA* d) {
+	//TITLEのときだけ表示してreturnで抜ける
+	if (d->state == d->TITLE) {
+		DrawStringToHandle(-5, 150, "じゃんけんげーむ", GetColor(255, 255, 255), d->fontHandle2);
+		DrawStringToHandle(100, 300, "☆エンターキーではじまるよ☆彡", GetColor(255, 255, 255), d->fontHandle1);
+		return;
+	}
+
+	DrawRotaGraph(d->player.px, d->player.py, d->player.extRate, d->player.angle, d->player.img[d->player.hand], TRUE, FALSE);
+	DrawRotaGraph(d->pc.px, d->pc.py, d->pc.extRate, d->pc.angle, d->pc.img[d->pc.hand], TRUE, FALSE);
+
+	for (int i = 0; i < d->player.life; i++) {
+		DrawGraph(150 + 50 * (i - 1), 55, d->heartImg, TRUE);
+	}
+	for (int i = 0; i < d->pc.life; i++) {
+		DrawGraph(580 + 50 * (i - 1), 55, d->heartImg, TRUE);
+	}
+	if (d->state == d->RESULT) {
+		SetFontSize(d->resultSize);
+		if (d->player.life > 0) {
+			DrawString(220, 110, "勝ち", GetColor(255, 0, 0));
+		}
+		else {
+			DrawString(220, 110, "負け", GetColor(0, 0, 255));
+		}
+	}
+
+	DrawStringToHandle(100, 330, "A = ぐ～", GetColor(255, 255, 255), d->fontHandle1);
+	DrawStringToHandle(300, 330, "S = ちょき", GetColor(255, 255, 255), d->fontHandle1);
+	DrawStringToHandle(550, 330, "D = ぱ～", GetColor(255, 255, 255), d->fontHandle1);
+	DrawStringToHandle(100, 390, "SPACE = 再戦", GetColor(255, 255, 255), d->fontHandle1);
+	DrawStringToHandle(400, 390, "ESC = 終わり", GetColor(255, 255, 255), d->fontHandle1);
 }
 //タイトル画面表示用
 void title(struct DATA* d) {
-	DrawStringToHandle(-5, 150, "じゃんけんげーむ", GetColor(255, 255, 255), g_fontHandle2);
-	DrawStringToHandle(100, 300, "☆エンターキーではじまるよ☆彡", GetColor(255, 255, 255), g_fontHandle1);
-	if (g_keyState[KEY_INPUT_RETURN] == 1 && g_oldKeyState[KEY_INPUT_RETURN] == 0) d->state = d->PLAY;
+	if (d->keyState[KEY_INPUT_RETURN] == 1 && d->oldKeyState[KEY_INPUT_RETURN] == 0) d->state = d->PLAY;
 }
 //ゲームプレイ用
 void play(struct DATA* d) {
-	if (!(g_keyState[KEY_INPUT_A] == 1 && g_oldKeyState[KEY_INPUT_A] == 0) &&
-		!(g_keyState[KEY_INPUT_S] == 1 && g_oldKeyState[KEY_INPUT_S] == 0) &&
-		!(g_keyState[KEY_INPUT_D] == 1 && g_oldKeyState[KEY_INPUT_D] == 0)) {
+	if (!(d->keyState[KEY_INPUT_A] == 1 && d->oldKeyState[KEY_INPUT_A] == 0) &&
+		!(d->keyState[KEY_INPUT_S] == 1 && d->oldKeyState[KEY_INPUT_S] == 0) &&
+		!(d->keyState[KEY_INPUT_D] == 1 && d->oldKeyState[KEY_INPUT_D] == 0)) {
 		return;
 	}
 	if (d->j_flg == 0) {
@@ -109,9 +142,9 @@ void play(struct DATA* d) {
 		WaitTimer(2500);
 		d->j_flg = 1;
 	}
-	if (g_keyState[KEY_INPUT_A] == 1 && g_oldKeyState[KEY_INPUT_A] == 0) d->player.hand = d->GU;
-	if (g_keyState[KEY_INPUT_S] == 1 && g_oldKeyState[KEY_INPUT_S] == 0) d->player.hand = d->CHOKI;
-	if (g_keyState[KEY_INPUT_D] == 1 && g_oldKeyState[KEY_INPUT_D] == 0) d->player.hand = d->PA;
+	if (d->keyState[KEY_INPUT_A] == 1 && d->oldKeyState[KEY_INPUT_A] == 0) d->player.hand = d->GU;
+	if (d->keyState[KEY_INPUT_S] == 1 && d->oldKeyState[KEY_INPUT_S] == 0) d->player.hand = d->CHOKI;
+	if (d->keyState[KEY_INPUT_D] == 1 && d->oldKeyState[KEY_INPUT_D] == 0) d->player.hand = d->PA;
 	d->pc.hand = GetRand(2);
 	//勝ち負け判定
 	if (d->player.hand == d->pc.hand) {
@@ -157,37 +190,11 @@ void result(struct DATA* d) {
 	if (d->resultSize < 180) {
 		d->resultSize += 10;
 	}
-	if (g_keyState[KEY_INPUT_SPACE] == 1 && g_oldKeyState[KEY_INPUT_SPACE] == 0) {
+	if (d->keyState[KEY_INPUT_SPACE] == 1 && d->oldKeyState[KEY_INPUT_SPACE] == 0) {
 		d->state = d->INIT;
 	}
 }
-//PLAY中の描画処理用
-void draw(struct DATA* d) {
-	DrawRotaGraph(d->player.px, d->player.py, d->player.extRate, d->player.angle, d->player.img[d->player.hand], TRUE, FALSE);
-	DrawRotaGraph(d->pc.px, d->pc.py, d->pc.extRate, d->pc.angle, d->pc.img[d->pc.hand], TRUE, FALSE);
 
-	for (int i = 0; i < d->player.life; i++) {
-		DrawGraph(150 + 50 * (i - 1), 55, d->heartImg, TRUE);
-	}
-	for (int i = 0; i < d->pc.life; i++) {
-		DrawGraph(580 + 50 * (i - 1), 55, d->heartImg, TRUE);
-	}
-	if (d->state == d->RESULT) {
-		SetFontSize(d->resultSize);
-		if (d->player.life > 0) {
-			DrawString(220, 110, "勝ち", GetColor(255, 0, 0));
-		}
-		else {
-			DrawString(220, 110, "負け", GetColor(0, 0, 255));
-		}
-	}
-	
-	DrawStringToHandle(100, 330, "A = ぐ～", GetColor(255, 255, 255), g_fontHandle1);
-	DrawStringToHandle(300, 330, "S = ちょき", GetColor(255, 255, 255), g_fontHandle1);
-	DrawStringToHandle(550, 330, "D = ぱ～", GetColor(255, 255, 255), g_fontHandle1);
-	DrawStringToHandle(100, 390, "SPACE = 再戦", GetColor(255, 255, 255), g_fontHandle1);
-	DrawStringToHandle(400, 390, "ESC = 終わり", GetColor(255, 255, 255), g_fontHandle1);
-}
 //main関数
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -201,21 +208,22 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	SetGraphMode(WINDOW_W, WINDOW_H, 32);
 	SetDrawScreen(DX_SCREEN_BACK);
 	SetBackgroundColor(180, 180, 180);
-	//キーの押下状態の保存用配列の初期化
-	for(int i = 0; i < 256; i++){
-		g_keyState[i] = 0;
-		g_oldKeyState[i] = 0;
-	}
+	
 
 	//DATA構造体の定義
 	struct DATA d;
 	//メモリへのデータの読み込み
 	loadImage(&d);
 	loadSe(&d);
+	//キーの押下状態の保存用配列の初期化
+	for (int i = 0; i < 256; i++) {
+		d.keyState[i] = 0;
+		d.oldKeyState[i] = 0;
+	}
 
 	while (ProcessMessage() == 0) {
 		//現在のキーボードの状態をすべて取得
-		GetHitKeyStateAll(g_keyState);
+		GetHitKeyStateAll(d.keyState);
 		//画面の初期化
 		ClearDrawScreen();
 		//メインの処理
@@ -223,17 +231,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		else if (d.state == d.TITLE) title(&d);
 		else if (d.state == d.PLAY) play(&d);
 		else if (d.state == d.RESULT) result(&d);
-		if (d.state == d.PLAY || d.state == d.RESULT) {
+		if (!(d.state == d.INIT)) {
 			draw(&d);
 		}
 		//
 		//裏画面の表示
 		ScreenFlip();
 		//ESCで終了させる
-		if (g_keyState[KEY_INPUT_ESCAPE] == 1 && g_oldKeyState[KEY_INPUT_ESCAPE] == 0) break;
+		if (d.keyState[KEY_INPUT_ESCAPE] == 1 && d.oldKeyState[KEY_INPUT_ESCAPE] == 0) break;
 		//キーボードの押下情報を保存する
 		for (int i = 0; i < 256; i++) {
-			g_oldKeyState[i] = g_keyState[i];
+			d.oldKeyState[i] = d.keyState[i];
 		}
 	}
 		
